@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriSense — Crop Intelligence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --forest: #1c3d2e;
+    --forest-mid: #2d5a42;
+    --forest-light: #3d7a58;
+    --leaf: #5ca96b;
+    --amber: #c8853a;
+    --amber-light: #e8a854;
+    --cream: #f5f0e6;
+    --cream-dark: #ece4d4;
+    --soil: #7a5c3a;
+    --text-dark: #1a2b22;
+    --text-mid: #4a6557;
+    --text-muted: #7a9488;
+    --white: #ffffff;
+    --card-bg: rgba(255,255,255,0.82);
+    --card-border: rgba(60,120,80,0.13);
+    --shadow: 0 4px 32px rgba(28,61,46,0.10);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --transition: 0.22s cubic-bezier(.4,0,.2,1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* ── Background texture ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 80% 10%, rgba(92,169,107,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(200,133,58,0.10) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233d7a58' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 24px 20px 48px;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    width: 46px;
+    height: 46px;
+    background: var(--forest);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-icon svg { width: 26px; height: 26px; }
+  .logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .logo-name {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--forest);
+    letter-spacing: -0.5px;
+  }
+  .logo-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .header-badge {
+    background: var(--forest);
+    color: var(--cream);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+  }
+
+  /* ── Main grid ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card-bg);
+    border: 0.5px solid var(--card-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--forest);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--leaf);
+    flex-shrink: 0;
+  }
+
+  /* ── Form ── */
+  .input-form { display: flex; flex-direction: column; gap: 16px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  input[type="text"], input[type="number"], select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--text-dark);
+    background: var(--cream);
+    border: 0.5px solid rgba(60,120,80,0.25);
+    border-radius: var(--radius-sm);
+    padding: 9px 13px;
+    width: 100%;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--forest-light);
+    box-shadow: 0 0 0 3px rgba(61,122,88,0.12);
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a9488' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+
+  .range-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--cream-dark);
+    outline: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--forest);
+    border: 3px solid var(--cream);
+    box-shadow: 0 0 0 1.5px var(--forest);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--forest);
+    border: 3px solid var(--cream);
+    box-shadow: 0 0 0 1.5px var(--forest);
+    cursor: pointer;
+  }
+  .range-val {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--forest-mid);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .btn-analyze {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--cream);
+    background: var(--forest);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 13px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background var(--transition), transform var(--transition);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .btn-analyze:hover { background: var(--forest-mid); }
+  .btn-analyze:active { transform: scale(0.98); }
+  .btn-analyze .arrow { transition: transform var(--transition); }
+  .btn-analyze:hover .arrow { transform: translateX(3px); }
+
+  /* ── Nutrient pills ── */
+  .nutrient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+  .nutrient-pill {
+    background: var(--cream-dark);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px 8px;
+    text-align: center;
+    border: 0.5px solid rgba(60,120,80,0.12);
+  }
+  .nutrient-pill .np-val {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--forest);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .nutrient-pill .np-lbl {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ── Result section ── */
+  .results-panel { display: flex; flex-direction: column; gap: 20px; }
+
+  /* top hero result */
+  .hero-result {
+    background: var(--forest);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: center;
+    box-shadow: 0 8px 40px rgba(28,61,46,0.22);
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+  }
+  .hero-result::before {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: -30px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(92,169,107,0.15);
+    pointer-events: none;
+  }
+  .hero-crop-label {
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(245,240,230,0.55);
+    margin-bottom: 6px;
+  }
+  .hero-crop-name {
+    font-family: 'Fraunces', serif;
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+    text-transform: capitalize;
+  }
+  .hero-conf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(92,169,107,0.25);
+    color: #a8e6b4;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 0.5px solid rgba(92,169,107,0.4);
+  }
+  .pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6ee07e;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .hero-right { display: flex; flex-direction: column; gap: 12px; }
+  .hero-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.07);
+    border-radius: var(--radius-sm);
+    border: 0.5px solid rgba(255,255,255,0.10);
+  }
+  .hero-stat-lbl { font-size: 11px; color: rgba(245,240,230,0.55); letter-spacing: 0.5px; text-transform: uppercase; }
+  .hero-stat-val { font-size: 14px; font-weight: 500; color: var(--cream); }
+
+  /* secondary cards row */
+  .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+  /* Weather card */
+  .weather-val {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 300;
+    color: var(--forest);
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .weather-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+  .weather-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-mid);
+    padding: 8px 0;
+    border-top: 0.5px solid var(--card-border);
+  }
+  .weather-row span:last-child { font-weight: 500; color: var(--text-dark); }
+
+  /* Fertilizer card */
+  .fert-name {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--amber);
+    margin-bottom: 10px;
+    line-height: 1.2;
+  }
+  .fert-desc { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+  .fert-tag {
+    display: inline-block;
+    background: rgba(200,133,58,0.12);
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 0.5px solid rgba(200,133,58,0.25);
+    margin-top: 12px;
+  }
+
+  /* Yield card */
+  .yield-ring-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+  }
+  .yield-num {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 500;
+    color: var(--forest);
+    letter-spacing: -1px;
+  }
+  .yield-unit { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Chart row */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .chart-wrap { position: relative; height: 220px; display: flex; align-items: center; justify-content: center; }
+
+  /* AI advice card */
+  .ai-advice {
+    background: linear-gradient(135deg, var(--forest) 0%, var(--forest-mid) 100%);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    color: var(--cream);
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-advice::after {
+    content: '';
+    position: absolute;
+    bottom: -40px;
+    right: -20px;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: rgba(92,169,107,0.12);
+    pointer-events: none;
+  }
+  .ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .ai-title {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--cream);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(200,133,58,0.25);
+    color: var(--amber-light);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 0.5px solid rgba(200,133,58,0.35);
+  }
+  .ai-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .ai-tab {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 0.5px solid rgba(255,255,255,0.15);
+    color: rgba(245,240,230,0.6);
+    background: transparent;
+    transition: all var(--transition);
+  }
+  .ai-tab.active {
+    background: rgba(255,255,255,0.12);
+    color: var(--cream);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .ai-content { font-size: 14px; line-height: 1.75; color: rgba(245,240,230,0.85); position: relative; z-index: 1; }
+  .ai-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .ai-step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(92,169,107,0.25);
+    color: #a8e6b4;
+    font-size: 11px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .ai-step p { font-size: 14px; color: rgba(245,240,230,0.82); line-height: 1.6; }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(245,240,230,0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .loading-overlay.active { opacity: 1; pointer-events: all; }
+  .loader-ring {
+    width: 56px;
+    height: 56px;
+    border: 3px solid var(--cream-dark);
+    border-top-color: var(--forest);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--forest);
+  }
+
+  /* Placeholder state */
+  .placeholder {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+  }
+  .placeholder-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--cream-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .placeholder h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--text-mid);
+    margin-bottom: 8px;
+  }
+  .placeholder p { font-size: 13px; line-height: 1.6; }
+
+  /* Fade-in animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.45s ease both; }
+  .fade-up-2 { animation: fadeUp 0.45s ease 0.08s both; }
+  .fade-up-3 { animation: fadeUp 0.45s ease 0.16s both; }
+  .fade-up-4 { animation: fadeUp 0.45s ease 0.24s both; }
+
+  /* Responsive */
+  @media (max-width: 1000px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .cards-row { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .cards-row { grid-template-columns: 1fr; }
+    .chart-row { grid-template-columns: 1fr; }
+    .hero-result { grid-template-columns: 1fr; }
+    .hero-crop-name { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loader-ring"></div>
+  <p class="loader-text">Analyzing your soil data…</p>
+</div>
+
+<div class="app-wrapper">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo-area">
+      <div class="logo-icon">
+        <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 3C13 3 7 7.5 7 14a6 6 0 0012 0C19 7.5 13 3 13 3z" fill="#5ca96b"/>
+          <path d="M13 10v13" stroke="#a8e6b4" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M13 14l-4-3" stroke="#a8e6b4" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M13 17l3-3" stroke="#a8e6b4" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">AgriSense</span>
+        <span class="logo-sub">Crop Intelligence</span>
+      </div>
+    </div>
+    <div class="header-badge">AI-Powered &nbsp;·&nbsp; ML Model</div>
+  </header>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- LEFT: Input Panel -->
+    <aside>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Soil &amp; Field Parameters</div>
+
+        <form class="input-form" id="cropForm">
+
+          <div class="form-group">
+            <label class="form-label">City / Location</label>
+            <input type="text" id="city" placeholder="e.g. Pune, Mumbai…" value="Pune">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Soil Type</label>
+            <select id="soil">
+              <option value="Loamy">Loamy</option>
+              <option value="Sandy">Sandy</option>
+              <option value="Clay">Clay</option>
+              <option value="Black">Black</option>
+              <option value="Red">Red</option>
+              <option value="Laterite">Laterite</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nitrogen (N) — mg/kg</label>
+            <div class="range-group">
+              <input type="range" id="N" min="0" max="140" value="40" step="1" oninput="updateRange('N', this.value)">
+              <span class="range-val" id="N-val">40</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phosphorus (P) — mg/kg</label>
+            <div class="range-group">
+              <input type="range" id="P" min="0" max="145" value="50" step="1" oninput="updateRange('P', this.value)">
+              <span class="range-val" id="P-val">50</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Potassium (K) — mg/kg</label>
+            <div class="range-group">
+              <input type="range" id="K" min="0" max="205" value="45" step="1" oninput="updateRange('K', this.value)">
+              <span class="range-val" id="K-val">45</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Temperature °C</label>
+              <input type="number" id="temperature" value="26" min="-10" max="60" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Humidity %</label>
+              <input type="number" id="humidity" value="72" min="0" max="100" step="1">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">pH Level</label>
+              <input type="number" id="ph" value="6.5" min="0" max="14" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rainfall mm</label>
+              <input type="number" id="rainfall" value="120" min="0" max="500" step="1">
+            </div>
+          </div>
+
+          <!-- Live NPK pills -->
+          <div class="nutrient-grid" id="npkPills">
+            <div class="nutrient-pill">
+              <span class="np-val" id="pill-N">40</span>
+              <span class="np-lbl">Nitrogen</span>
+            </div>
+            <div class="nutrient-pill">
+              <span class="np-val" id="pill-P">50</span>
+              <span class="np-lbl">Phosphorus</span>
+            </div>
+            <div class="nutrient-pill">
+              <span class="np-val" id="pill-K">45</span>
+              <span class="np-lbl">Potassium</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn-analyze" onclick="analyze()">
+            Analyze &amp; Recommend
+            <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- RIGHT: Results Panel -->
+    <main>
+      <div class="results-panel" id="resultsPanel">
+
+        <!-- Placeholder -->
+        <div class="card" id="placeholderCard">
+          <div class="placeholder">
+            <div class="placeholder-icon">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <path d="M14 4C14 4 8 9 8 16a6 6 0 0012 0c0-7-6-12-6-12z" fill="#c8d8c8"/>
+                <path d="M14 11v13" stroke="#9ab49a" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <h3>Ready to analyze your field</h3>
+            <p>Enter your soil parameters and location on the left,<br>then click Analyze to get AI-powered crop recommendations.</p>
+          </div>
+        </div>
+
+        <!-- Results (hidden until analyze) -->
+        <div id="resultsContent" style="display:none; display:none; flex-direction:column; gap:20px;">
+
+          <!-- Hero crop result -->
+          <div class="hero-result fade-up" id="heroCard">
+            <div>
+              <p class="hero-crop-label">Recommended Crop</p>
+              <p class="hero-crop-name" id="resCropName">—</p>
+              <span class="hero-conf-badge"><span class="pulse-dot"></span> High confidence</span>
+            </div>
+            <div class="hero-right">
+              <div class="hero-stat">
+                <span class="hero-stat-lbl">Est. Yield</span>
+                <span class="hero-stat-val" id="resYield">—</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-lbl">Soil Type</span>
+                <span class="hero-stat-val" id="resSoilType">—</span>
+              </div>
+              <div class="hero-stat">
+                <span class="hero-stat-lbl">pH</span>
+                <span class="hero-stat-val" id="resPH">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary cards -->
+          <div class="cards-row">
+
+            <!-- Weather -->
+            <div class="card fade-up-2" id="weatherCard">
+              <div class="card-title"><span class="dot" style="background:var(--amber)"></span> Weather</div>
+              <div class="weather-val" id="resTemp">—</div>
+              <div class="weather-desc" id="resWeatherDesc">Current conditions</div>
+              <div class="weather-row"><span>Wind Speed</span><span id="resWind">—</span></div>
+              <div class="weather-row"><span>Humidity</span><span id="resHumidity">—</span></div>
+              <div class="weather-row"><span>Rainfall</span><span id="resRainfall">—</span></div>
+            </div>
+
+            <!-- Fertilizer -->
+            <div class="card fade-up-2" id="fertCard">
+              <div class="card-title"><span class="dot" style="background:var(--amber)"></span> Fertilizer</div>
+              <div class="fert-name" id="resFert">—</div>
+              <p class="fert-desc" id="resFertDesc">—</p>
+              <div class="fert-tag" id="resFertTag">Recommended</div>
+            </div>
+
+            <!-- Yield -->
+            <div class="card fade-up-2" id="yieldCard">
+              <div class="card-title"><span class="dot" style="background:var(--leaf)"></span> Yield Estimate</div>
+              <div class="yield-ring-wrap">
+                <canvas id="yieldGauge" width="160" height="160" style="max-width:160px;"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Charts row -->
+          <div class="chart-row fade-up-3">
+            <div class="card">
+              <div class="card-title"><span class="dot"></span> Nutrient Profile</div>
+              <div class="chart-wrap"><canvas id="nutrientRadar"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title"><span class="dot" style="background:var(--amber)"></span> Parameter Overview</div>
+              <div class="chart-wrap"><canvas id="paramBar"></canvas></div>
+            </div>
+          </div>
+
+          <!-- AI Advice -->
+          <div class="ai-advice fade-up-4" id="aiCard">
+            <div class="ai-header">
+              <div class="ai-title">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <circle cx="9" cy="9" r="7.5" stroke="#a8e6b4" stroke-width="1.2"/>
+                  <path d="M6 9.5C6.5 11.5 8 12.5 9 12.5C10 12.5 11.5 11.5 12 9.5" stroke="#a8e6b4" stroke-width="1.2" stroke-linecap="round"/>
+                  <circle cx="7" cy="7.5" r="0.7" fill="#a8e6b4"/>
+                  <circle cx="11" cy="7.5" r="0.7" fill="#a8e6b4"/>
+                </svg>
+                AI Agronomist Advice
+              </div>
+              <span class="ai-badge">Llama 3.3</span>
+            </div>
+            <div class="ai-tabs">
+              <button class="ai-tab active" onclick="showTab(this,'explanation')">Explanation</button>
+              <button class="ai-tab" onclick="showTab(this,'process')">Process</button>
+              <button class="ai-tab" onclick="showTab(this,'tips')">Tips</button>
+            </div>
+            <div class="ai-content" id="aiExplanation"></div>
+            <div class="ai-content" id="aiProcess" style="display:none"></div>
+            <div class="ai-content" id="aiTips" style="display:none"></div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<script>
+/* ── Helpers ── */
+function updateRange(id, val) {
+  document.getElementById(id+'-val').textContent = val;
+  document.getElementById('pill-'+id).textContent = val;
+}
+
+function showTab(btn, tab) {
+  document.querySelectorAll('.ai-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['explanation','process','tips'].forEach(t => {
+    document.getElementById('ai'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab ? '' : 'none';
+  });
+}
+
+/* ── Fertilizer descriptions ── */
+const fertDesc = {
+  'Urea': 'High-nitrogen fertilizer suitable for most crops. Apply at sowing and top-dressing stages.',
+  '14-35-14': 'Balanced NPK blend, ideal for flowering and fruiting stages of vegetable crops.',
+  '28-28': 'Equal N-P blend for establishing young plants. Good for early growth stages.',
+  '17-17-17': 'Complete balanced NPK fertilizer. Versatile for various soil types and crops.',
+  '20-20': 'Diammonium phosphate blend. Promotes root development and early growth.',
+  '10-26-26': 'High phosphorus-potassium blend. Best for root and bulb crops.',
+};
+function getFertDesc(name) {
+  for (const k in fertDesc) if (name && name.toUpperCase().includes(k)) return fertDesc[k];
+  return 'Apply as directed per crop stage and soil test results.';
+}
+
+/* ── Parse Groq AI plain-text into structured sections ── */
+function parseAIText(text) {
+  if (!text) return { explanation: '<p>No advice available.</p>', process: '', tips: '' };
+
+  /* Split on known section headers (case-insensitive) */
+  const sections = { explanation: '', process: '', tips: '' };
+  const blocks = text.split(/\n(?=(?:explanation|process|steps?|tips?)[:\s])/i);
+
+  blocks.forEach(block => {
+    const lower = block.toLowerCase();
+    if (lower.match(/^explanation/)) {
+      sections.explanation = block.replace(/^explanation[:\s]*/i, '').trim();
+    } else if (lower.match(/^(process|steps?)/)) {
+      sections.process = block.replace(/^(process|steps?)[:\s]*/i, '').trim();
+    } else if (lower.match(/^tips?/)) {
+      sections.tips = block.replace(/^tips?[:\s]*/i, '').trim();
+    } else if (!sections.explanation) {
+      sections.explanation = block.trim();
+    }
+  });
+
+  /* Fallback: if no headers found, put everything in explanation */
+  if (!sections.explanation && !sections.process && !sections.tips) {
+    sections.explanation = text.trim();
+  }
+
+  function toStepHTML(raw, numbered) {
+    if (!raw) return '<p style="color:rgba(245,240,230,0.6);font-size:13px">No content available.</p>';
+    const lines = raw.split('\n').map(l => l.replace(/^[\d\-\*\•\.]+\s*/, '').trim()).filter(Boolean);
+    if (!lines.length) return `<p>${raw}</p>`;
+    return lines.map((l, i) => {
+      const num = numbered
+        ? `<span class="ai-step-num">${i+1}</span>`
+        : `<span class="ai-step-num" style="background:rgba(200,133,58,0.2);color:var(--amber-light)">✓</span>`;
+      return `<div class="ai-step">${num}<p>${l}</p></div>`;
+    }).join('');
+  }
+
+  const explanationHTML = `<p>${sections.explanation.replace(/\n+/g, ' ')}</p>`;
+  const processHTML     = toStepHTML(sections.process, true);
+  const tipsHTML        = toStepHTML(sections.tips, false);
+
+  return { explanation: explanationHTML, process: processHTML, tips: tipsHTML };
+}
+
+/* ── Weather code → human label ── */
+function weatherLabel(code) {
+  if (code === 0) return 'Clear sky';
+  if (code <= 3) return 'Partly cloudy';
+  if (code <= 49) return 'Foggy';
+  if (code <= 67) return 'Rainy';
+  if (code <= 77) return 'Snowy';
+  if (code <= 82) return 'Showers';
+  return 'Stormy';
+}
+
+/* ── Error toast ── */
+function showError(msg) {
+  let toast = document.getElementById('errorToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'errorToast';
+    toast.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#7a2020;color:#fce8e8;font-size:14px;padding:12px 22px;
+      border-radius:10px;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,0.18);
+      transition:opacity 0.3s;max-width:90vw;text-align:center;`;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; }, 4500);
+}
+
+/* ── Charts ── */
+let radarChart = null, barChart = null, gaugeChart = null;
+
+function drawRadar(N, P, K) {
+  const ctx = document.getElementById('nutrientRadar').getContext('2d');
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Nitrogen','Phosphorus','Potassium','pH (×10)','Humidity'],
+      datasets: [{
+        label: 'Soil Profile',
+        data: [N, P, K, parseFloat(document.getElementById('ph').value)*10, parseFloat(document.getElementById('humidity').value)],
+        backgroundColor: 'rgba(61,122,88,0.18)',
+        borderColor: '#3d7a58',
+        borderWidth: 2,
+        pointBackgroundColor: '#5ca96b',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { suggestedMin: 0, ticks: { display: false }, grid: { color: 'rgba(0,0,0,0.07)' }, pointLabels: { font: { size: 11, family: 'DM Sans' }, color: '#4a6557' } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function drawBar(N, P, K, temp, rainfall) {
+  const ctx = document.getElementById('paramBar').getContext('2d');
+  if (barChart) barChart.destroy();
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['N','P','K','Temp','Rainfall/10'],
+      datasets: [{
+        data: [N, P, K, temp, rainfall/10],
+        backgroundColor: ['#3d7a58','#5ca96b','#2d5a42','#c8853a','#e8a854'],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 12, family: 'DM Sans' }, color: '#4a6557' } },
+        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11, family: 'DM Sans' }, color: '#7a9488' } }
+      }
+    }
+  });
+}
+
+function drawGauge(yieldVal) {
+  const ctx = document.getElementById('yieldGauge').getContext('2d');
+  if (gaugeChart) gaugeChart.destroy();
+  const pct = Math.min(yieldVal / 300, 1);
+  gaugeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [pct, 1-pct],
+        backgroundColor: ['#3d7a58', 'rgba(61,122,88,0.1)'],
+        borderWidth: 0,
+        circumference: 270,
+        rotation: 225
+      }]
+    },
+    options: {
+      responsive: false, cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      }
+    },
+    plugins: [{
+      id: 'centerText',
+      afterDraw(chart) {
+        const { ctx, width, height } = chart;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const cy = height / 2 + 14;
+        ctx.font = '500 22px Fraunces, serif';
+        ctx.fillStyle = '#1c3d2e';
+        ctx.fillText(yieldVal.toFixed(1), width/2, cy - 10);
+        ctx.font = '12px DM Sans, sans-serif';
+        ctx.fillStyle = '#7a9488';
+        ctx.fillText('score', width/2, cy + 14);
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+/* ── Main analyze function ── */
+async function analyze() {
+  const N        = parseFloat(document.getElementById('N').value);
+  const P        = parseFloat(document.getElementById('P').value);
+  const K        = parseFloat(document.getElementById('K').value);
+  const temp     = parseFloat(document.getElementById('temperature').value);
+  const humidity = parseFloat(document.getElementById('humidity').value);
+  const ph       = parseFloat(document.getElementById('ph').value);
+  const rainfall = parseFloat(document.getElementById('rainfall').value);
+  const soil     = document.getElementById('soil').value;
+  const city     = document.getElementById('city').value.trim() || 'Pune';
+
+  /* Basic validation */
+  if ([N,P,K,temp,humidity,ph,rainfall].some(isNaN)) {
+    showError('Please fill in all numeric fields before analyzing.');
+    return;
+  }
+
+  document.getElementById('loadingOverlay').classList.add('active');
+
+  try {
+    /* ── POST to Flask /predict ── */
+    const formData = new FormData();
+    formData.append('N',           N);
+    formData.append('P',           P);
+    formData.append('K',           K);
+    formData.append('temperature', temp);
+    formData.append('humidity',    humidity);
+    formData.append('ph',          ph);
+    formData.append('rainfall',    rainfall);
+    formData.append('soil',        soil);
+    formData.append('city',        city);
+
+    const res  = await fetch('/predict', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    document.getElementById('loadingOverlay').classList.remove('active');
+
+    /* ── Handle Flask error ── */
+    if (data.error) {
+      showError('Server error: ' + data.error);
+      return;
+    }
+
+    /* ── Destructure response ── */
+    const crop    = data.crop    || '—';
+    const fert    = data.fertilizer || '—';
+    const weather = data.weather || {};
+    const yieldVal= parseFloat(data.yield) || 0;
+    const aiRaw   = data.ai    || '';
+    const resN    = parseFloat(data.N) || N;
+    const resP    = parseFloat(data.P) || P;
+    const resK    = parseFloat(data.K) || K;
+
+    /* ── Show results panel ── */
+    document.getElementById('placeholderCard').style.display = 'none';
+    const rc = document.getElementById('resultsContent');
+    rc.style.display = 'flex';
+
+    /* ── Hero ── */
+    document.getElementById('resCropName').textContent = crop;
+    document.getElementById('resYield').textContent    = yieldVal.toFixed(2) + ' pts';
+    document.getElementById('resSoilType').textContent = soil;
+    document.getElementById('resPH').textContent       = ph.toFixed(1);
+
+    /* ── Weather card ── */
+    const wTemp = weather.temperature != null ? parseFloat(weather.temperature) : temp;
+    const wWind = weather.windspeed   != null ? parseFloat(weather.windspeed)   : 0;
+    const wCode = weather.weathercode != null ? parseInt(weather.weathercode)   : 0;
+    document.getElementById('resTemp').textContent       = wTemp.toFixed(1) + '°C';
+    document.getElementById('resWeatherDesc').textContent = weatherLabel(wCode);
+    document.getElementById('resWind').textContent       = wWind.toFixed(1) + ' km/h';
+    document.getElementById('resHumidity').textContent   = humidity.toFixed(0) + ' %';
+    document.getElementById('resRainfall').textContent   = rainfall.toFixed(0) + ' mm';
+
+    /* ── Fertilizer card ── */
+    document.getElementById('resFert').textContent    = fert;
+    document.getElementById('resFertDesc').textContent = getFertDesc(fert);
+    document.getElementById('resFertTag').textContent  = 'For ' + crop;
+
+    /* ── Charts ── */
+    setTimeout(() => {
+      drawRadar(resN, resP, resK);
+      drawBar(resN, resP, resK, wTemp, rainfall);
+      drawGauge(yieldVal);
+    }, 100);
+
+    /* ── AI Advice ── */
+    const ai = parseAIText(aiRaw);
+    document.getElementById('aiExplanation').innerHTML = ai.explanation;
+    document.getElementById('aiProcess').innerHTML     = ai.process;
+    document.getElementById('aiTips').innerHTML        = ai.tips;
+    document.querySelectorAll('.ai-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+    document.getElementById('aiProcess').style.display     = 'none';
+    document.getElementById('aiTips').style.display        = 'none';
+    document.getElementById('aiExplanation').style.display = '';
+
+    /* Scroll to results on mobile */
+    if (window.innerWidth < 1000) {
+      rc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+  } catch (err) {
+    document.getElementById('loadingOverlay').classList.remove('active');
+    showError('Could not reach the server. Is Flask running on port 5000?');
+    console.error(err);
+  }
+}
+</script>
+</body>
+</html>
